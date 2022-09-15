@@ -1,0 +1,99 @@
+---
+title: 'Prediction on manners of consumers exersice '
+author: "HU TANG"
+date: '2022-09-15'
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+This report is about the creating process of a prediction on the manner of consumers exercises, the components of which are including:
+
+how to build a model, 
+how to use cross validation,
+figuring out the expected out of sample error,
+why to make the choices
+
+## Report Text
+
+*\### data preparation*
+
+Firstly, download the data files needed and load the packages required by the project.
+
+```{r data, echo=TRUE}
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv', destfile = './pml-training.csv', method = 'curl')
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv', destfile = './pml-testing.csv', method = 'curl')
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+```
+
+read the data files and check the data structures
+
+```{r structures, echo=TRUE}
+dtest<-read.csv("pml-testing.csv")
+str(dtest)
+dtrain<-read.csv("pml-training.csv")
+str(dtrain)
+
+```
+
+This two files' structure shows that there are columns containing NA and there are also different features among these two files, for example, some time-dependent values included in the 'dtrain' file are not included in the 'dtest' file. We should remove all of these meaningless and useless elements.
+```{r data_cleaning1, echo=TRUE}
+coln1 <- names(dtest[ , colSums(is.na(dtest)) == 0])[8:59]
+dtest0 <- dtest[ , c(coln1, 'problem_id')]
+dim(dtest0)
+```
+
+For the final purpose of the model, we should adhere the data structure of training files to that of testing files.
+```{r data_cleaning2, echo=TRUE}
+dtrain0 <- dtrain[ , c(coln1, 'classe')]
+dim(dtrain0)
+```
+
+*\### creating model*
+
+Partitioning the training data, the data named 'dtrain0', into two parts by the proportion of 70% and 30%, as the training set for modeling process and test set for the validations, respectively.
+```{r Partition, echo=TRUE}
+inTrain <- createDataPartition(dtrain0$classe, p=0.7, list=FALSE)
+ptrain <- dtrain0[inTrain,]
+ptest <- dtrain0[-inTrain,]
+dim(ptrain)
+dim(ptest)
+```
+
+build the model, which takes the form of Decision-Making Tree:
+```{r dTree, echo=TRUE}
+dTree <- rpart(classe ~ ., data = ptrain, method = 'class')
+fancyRpartPlot(dTree)
+```
+
+*\### use cross validation to test the Decision-making Tree model*
+
+Input the model-testing data partitioned above, the data 'ptest', into the model and have a check:
+```{r validation1, echo=TRUE}
+prediction <- predict(dTree, ptest, type = 'class')
+confusionMatrix(prediction, as.factor(ptest$classe))
+```
+
+Meanwhile, let's build a Random Forest Model and take a validation:
+```{r validation2, echo=TRUE}
+rForest <- randomForest(as.factor(classe) ~ ., data = ptrain, ntree = 1000)
+prediction2 <- predict(rForest, ptest, type = 'class')
+confusionMatrix(prediction, as.factor(ptest$classe))
+```
+Based on the above two summary table, both of the model have the same Accuracy, which is 72.22%, so either of them should be a Good Choice!
+
+## Conclusion
+Trough the analysis above, we completed the steps required thoroughly and can make the decision that, because both of the models have the same accuracy and out of sample errors, either of them is the choice.
+
+
+
